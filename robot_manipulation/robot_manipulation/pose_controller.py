@@ -1,3 +1,4 @@
+from copy import deepcopy
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
@@ -15,6 +16,10 @@ class RobotManipulation(Node):
         super().__init__('robot_manipulation')
         self.client = ActionClient(self, MoveGroup, '/move_action')
         self.started = False
+        self.steps = []
+        self.step_index = 0
+        self.declare_parameter('approach_offset', 0.10)
+        self.declare_parameter('lift_height', 0.15)
         self.subscription = self.create_subscription(
             PoseStamped, '/detected_object_pose', self.on_pose, 10
         )
@@ -29,6 +34,28 @@ class RobotManipulation(Node):
             self.get_logger().error('目前只接受 panda_link0 座標。')
             return
         self.started = True
+        approach = deepcopy(pose)
+        approach.pose.position.z += float(
+            self.get_parameter('approach_offset').value
+        )
+        lift = deepcopy(pose)
+        lift.pose.position.z += float(
+            self.get_parameter('lift_height').value
+        )
+        self.steps = [
+            ('接近', approach),
+            ('下降', deepcopy(pose)),
+            ('抬升', lift),
+        ]
+        self.step_index = 0
+        self.send_step()
+
+    def send_step(self):
+        name, pose = self.steps[self.step_index]
+        self.get_logger().info(
+            f'步驟 {self.step_index + 1}/3：{name}，'
+            f'目標高度 {pose.pose.position.z:.2f} m'
+        )
 
         goal = MoveGroup.Goal()
         request = goal.request
@@ -72,7 +99,7 @@ class RobotManipulation(Node):
         goal.planning_options.planning_scene_diff.is_diff = True
         goal.planning_options.planning_scene_diff.robot_state.is_diff = True
 
-        self.get_logger().info('收到位置，開始規劃並執行...')
+        self.get_logger().info('開始規劃並執行目前步驟...')
         future = self.client.send_goal_async(goal)
         future.add_done_callback(self.on_goal)
 
@@ -91,9 +118,22 @@ class RobotManipulation(Node):
         try:
             code = future.result().result.error_code.val
             if code == MoveItErrorCodes.SUCCESS:
-                self.get_logger().info('成功！Panda 已到達目標。')
+                name, _ = self.steps[self.step_index]
+                self.get_logger().info(f'{name}成功。')
+                self.step_index += 1
+                if self.step_index < len(self.steps):
+                    self.send_step()
+                else:
+                    self.get_logger().info(
+                        '三段動作完成！等待下一個物件位置。'
+                    )
+                    self.steps = []
+                    self.started = False
             else:
-                self.get_logger().error(f'MoveIt 失敗，錯誤碼：{code}')
+                self.get_logger().error(
+                    f'MoveIt 失敗，錯誤碼：{code}。'
+                    '序列已停止，請重啟程式後再試。'
+                )
         except Exception as error:
             self.get_logger().error(str(error))
 
