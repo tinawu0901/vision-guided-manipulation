@@ -24,6 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'fake_object_publisher = robot_manipulation.fake_object_publisher:main',
             'pose_controller = robot_manipulation.pose_controller:main'
         ],
     },
