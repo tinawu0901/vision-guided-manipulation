@@ -82,6 +82,7 @@ class ObjectLocalization(Node):
 
         # 指定手掌朝向；不是由圖片估計的瓶子朝向。
         pose.pose.orientation.x = 1.0
+        pose.pose.orientation.w = 0.0
         self.publisher.publish(pose)
         self.pending = None
         self.get_logger().info(

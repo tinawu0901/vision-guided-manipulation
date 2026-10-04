@@ -3,14 +3,15 @@
 <package format="3">
   <name>robot_manipulation</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>Sequential Panda pose control through the MoveIt MoveGroup action.</description>
   <maintainer email="asd28018807@gmail.com">tina</maintainer>
-  <license>TODO: License declaration</license>
+  <license>MIT</license>
 
   <depend>rclpy</depend>
   <depend>geometry_msgs</depend>
   <depend>moveit_msgs</depend>
   <depend>shape_msgs</depend>
+  <depend>std_msgs</depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

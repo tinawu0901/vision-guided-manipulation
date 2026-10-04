@@ -1,21 +1,26 @@
 from copy import deepcopy
-import rclpy
-from rclpy.node import Node
-from rclpy.action import ActionClient
+import json
+import math
+
 from geometry_msgs.msg import PoseStamped
-from shape_msgs.msg import SolidPrimitive
 from moveit_msgs.action import MoveGroup
 from moveit_msgs.msg import (
-    Constraints, PositionConstraint, OrientationConstraint,
-    MoveItErrorCodes,
+    Constraints, MoveItErrorCodes, OrientationConstraint, PositionConstraint,
 )
+import rclpy
+from rclpy.action import ActionClient
+from rclpy.node import Node
+from shape_msgs.msg import SolidPrimitive
+from std_msgs.msg import String
 
 
 class RobotManipulation(Node):
+
     def __init__(self):
         super().__init__('robot_manipulation')
         self.client = ActionClient(self, MoveGroup, '/move_action')
         self.started = False
+        self.status_publisher = self.create_publisher(String, '/manipulation_status', 10)
         self.steps = []
         self.step_index = 0
         self.declare_parameter('approach_offset', 0.10)
@@ -33,6 +38,18 @@ class RobotManipulation(Node):
         if pose.header.frame_id != 'panda_link0':
             self.get_logger().error('目前只接受 panda_link0 座標。')
             return
+        p, q = pose.pose.position, pose.pose.orientation
+        values = [p.x, p.y, p.z, q.x, q.y, q.z, q.w]
+        if not all(math.isfinite(value) for value in values):
+            self.get_logger().error('Target contains non-finite values.')
+            return
+        norm = math.sqrt(q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w)
+        if norm < 1e-6:
+            self.get_logger().error('Target orientation is a zero quaternion.')
+            return
+        pose = deepcopy(pose)
+        for field in ('x', 'y', 'z', 'w'):
+            setattr(pose.pose.orientation, field, getattr(q, field)/norm)
         self.started = True
         approach = deepcopy(pose)
         approach.pose.position.z += float(
@@ -49,6 +66,15 @@ class RobotManipulation(Node):
         ]
         self.step_index = 0
         self.send_step()
+
+    def publish_status(self, state, **details):
+        self.status_publisher.publish(String(data=json.dumps({'state': state, **details})))
+
+    def fail(self, message):
+        self.get_logger().error(message)
+        self.publish_status('failed', message=message, step=self.step_index)
+        self.steps = []
+        self.started = False
 
     def send_step(self):
         name, pose = self.steps[self.step_index]
@@ -100,6 +126,9 @@ class RobotManipulation(Node):
         goal.planning_options.planning_scene_diff.robot_state.is_diff = True
 
         self.get_logger().info('開始規劃並執行目前步驟...')
+        self.publish_status(
+            'executing', step=self.step_index, name=name,
+            target=[pose.pose.position.x, pose.pose.position.y, pose.pose.position.z])
         future = self.client.send_goal_async(goal)
         future.add_done_callback(self.on_goal)
 
@@ -107,12 +136,12 @@ class RobotManipulation(Node):
         try:
             handle = future.result()
             if not handle.accepted:
-                self.get_logger().error('MoveIt 拒絕目標。重啟程式後再試。')
+                self.fail('MoveIt rejected the target.')
                 return
             self.get_logger().info('MoveIt 接受目標，等待執行結果...')
             handle.get_result_async().add_done_callback(self.on_result)
         except Exception as error:
-            self.get_logger().error(str(error))
+            self.fail(str(error))
 
     def on_result(self, future):
         try:
@@ -129,13 +158,11 @@ class RobotManipulation(Node):
                     )
                     self.steps = []
                     self.started = False
+                    self.publish_status('complete')
             else:
-                self.get_logger().error(
-                    f'MoveIt 失敗，錯誤碼：{code}。'
-                    '序列已停止，請重啟程式後再試。'
-                )
+                self.fail(f'MoveIt failed with error code {code}. Sequence stopped.')
         except Exception as error:
-            self.get_logger().error(str(error))
+            self.fail(str(error))
 
 
 def main():

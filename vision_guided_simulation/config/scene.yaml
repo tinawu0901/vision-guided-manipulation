@@ -1,0 +1,22 @@
+# Coordinates in panda_link0/world, metres and radians.
+bottle:
+  x: 0.45
+  y: 0.0
+  bottom_z: 0.02
+  height: 0.22
+  radius: 0.046
+camera:
+  x: 1.05
+  y: 0.0
+  z: 0.48
+  pitch: 0.52
+  yaw: 3.141592653589793
+  width: 640
+  height: 480
+  horizontal_fov: 0.95
+table:
+  center_x: 0.25
+  center_z: -0.02
+  size_x: 1.1
+  size_y: 0.8
+  size_z: 0.08

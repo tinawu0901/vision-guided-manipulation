@@ -15,8 +15,8 @@ setup(
     zip_safe=True,
     maintainer='tina',
     maintainer_email='asd28018807@gmail.com',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description='Sequential Panda pose control through the MoveIt MoveGroup action.',
+    license='MIT',
     extras_require={
         'test': [
             'pytest',
