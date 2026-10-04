@@ -1,9 +1,10 @@
+from geometry_msgs.msg import PoseStamped
 import rclpy
 from rclpy.node import Node
-from geometry_msgs.msg import PoseStamped
 
 
 class FakeObjectPublisher(Node):
+
     def __init__(self):
         super().__init__('fake_object_publisher')
         self.declare_parameter('x', 0.4)
@@ -28,6 +29,7 @@ class FakeObjectPublisher(Node):
         pose.pose.position.y = float(self.get_parameter('y').value)
         pose.pose.position.z = float(self.get_parameter('z').value)
         pose.pose.orientation.x = 1.0
+        pose.pose.orientation.w = 0.0
 
         self.publisher.publish(pose)
         self.sent = True

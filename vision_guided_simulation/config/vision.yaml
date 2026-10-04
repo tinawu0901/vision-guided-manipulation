@@ -1,0 +1,5 @@
+camera_vision:
+  ros__parameters:
+    confidence: 0.4
+    hand_clearance: 0.18
+    bottle_radius: 0.046
