@@ -1,13 +1,14 @@
 # Vision-Guided Robot Manipulation
 
-A ROS 2 Jazzy project connecting object detection, camera geometry, TF2 and
-MoveIt 2 to a simulated Franka Panda.
+A ROS 2 Jazzy project that detects a bottle in Gazebo, estimates its position
+from RGB-D data, and sends reaching targets to a simulated Franka Panda through
+MoveIt 2.
 
 ![Camera detection and executed Gazebo motions](docs/demo/gazebo-demo.gif)
 
-Three tested bottle positions passed independent localization and endpoint
-checks. [Recorded measurements](docs/validation.md) and
-[the Chinese operating guide](docs/gazebo-guide.zh-TW.md) accompany the demo.
+The demo was checked at three bottle positions. See the
+[measurements](docs/validation.md) for localization and final hand-pose errors,
+or the [Chinese operating guide](docs/gazebo-guide.zh-TW.md) to run it.
 
 ## Pipeline
 
